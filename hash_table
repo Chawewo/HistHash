@@ -1,0 +1,185 @@
+/* hash_table.cpp
+   This file is in charge of testing several different hash functions
+
+   David Trujillo
+   11/XX/2022
+
+ */
+#include <cmath>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <iostream>
+#include <cstdint>
+#include <type_traits>
+#include <boost/math/distributions/chi_squared.hpp>
+using namespace std;
+// unsigned 16 bit for big integers, we know that the int will not be non-negative
+static const int m = 65413;
+void reset(vector<int> &hashes);
+int str_hash(string s);
+int first_hash(string s);
+int add_hash(string s);   // Function Prototypes
+double mult_hash(string s);
+int rem_hash(string s);
+void pearson_test(vector<int> &hashes);
+void hash_function(int (*func)(string), vector<int> &hashes);
+void hash_function(double (*func)(string), vector<int> &hashes);
+unsigned char char_to_unsigned(char c);
+
+int main()
+{
+  uint16_t x; //65536
+  vector<int> hashes(65536);
+  string w;
+  //rem hash
+  reset(hashes);
+  hash_function(&rem_hash, hashes);
+  cout << "Rem hash -> \n";
+  pearson_test(hashes);
+   cout << "finished rem hash" << endl;
+  // string length
+  reset(hashes);
+  hash_function(&str_hash,hashes);
+  cout << "str len hash -> \n";
+  pearson_test(hashes);
+   cout << "finished string hash" << endl;
+  // First char
+  reset(hashes);
+  hash_function(&first_hash, hashes);
+  cout << "First Char hash -> ";
+  pearson_test(hashes);
+  cout << "finished first_hash" << endl;
+  // Multiplicative
+  reset(hashes);
+  hash_function(&mult_hash, hashes);
+  cout << "Mult hash -";
+  pearson_test(hashes);
+  // Additive
+  reset(hashes);
+  hash_function(&add_hash, hashes);
+  cout << "Add hash -> ";
+  pearson_test(hashes);
+
+
+  return 0;
+} // End of main()
+
+void hash_function(int (*func)(string), vector<int> &hashes)
+{
+  string w;
+  ifstream file("/usr/share/dict/words");
+  while (getline(file,w)) // word gets saved into string w
+    {
+      double h = func(w);
+      // cout << "The hash for this word is " << h << endl;
+      // hashes.at(h) = h; // Remainder Hashing first test
+      //cout << "Incrementing hash at " << h << endl;
+      hashes.at(h)++;
+      // cout << "Passes hash at " << h << endl;
+    }
+
+}
+
+void hash_function(double (*func)(string), vector<int> &hashes)
+{
+  string w;
+  ifstream file("/usr/share/dict/words");
+  while (getline(file,w)) // word gets saved into string w
+    {
+      double h = func(w);
+      // cout << "The hash for this word is " << h << endl;
+      //hashes.at(h) = h; // Remainder Hashing first test
+      //cout << "Incrementing hash at " << h << endl;
+      hashes.at(h)++;
+      // cout << "Passes hash at " << h << endl;
+}
+// append one end to the other after removal from splay tree
+// String Length
+int str_hash(string s)
+{
+  int x = s.length();
+  return x % m;
+}
+// First Character
+int first_hash(string s)
+{
+  uint16_t y = s[0];
+  return y;
+}
+// Additive Checksum
+int add_hash(string s)
+{
+  int x = 0;
+  uint16_t y;
+  for (char c : s)
+    y = c;
+    x = y + x;
+  return x % m;
+}
+// Multiplicative Method
+double mult_hash(string s)
+{
+  double a = 25853;
+  double h = 0.0;
+  int m = s.length();
+  uint16_t y;
+  for (char c :s)
+    {
+      y = c;
+      h = fmod(256*h + (y * a),1);
+    }
+  return floor(m*h);
+}
+// Remainder Method
+int rem_hash(string s)
+{
+  int h = 0;
+  uint16_t y;
+  for (char c : s)
+    {
+      y = c;
+ h = ((256 * h + y ) % m);
+    }
+  return h;
+}
+
+unsigned char char_to_unsigned(char c)
+{
+  return static_cast<make_unsigned<char>::type>(c);
+}
+
+void pearson_test(vector<int> &hashes)
+{
+  float size = 0;
+  for(int x = 0; x < hashes.size()-1; ++x)
+    if(hashes.at(x) != 0)
+      ++size;
+  cout << "Size ->" << size;
+  float expected = size/65536;
+  cout << "|| Expected: " << expected << endl;
+  cout << "Hash Vect Size is ->" << hashes.size() << endl;
+  //  cout << "Has Vect at index 0 is ->" << hashes[0] << endl;
+
+  float c2 = 0;
+  for (int k = 0; k < hashes.size()-1; ++k)
+    {
+      c2 = c2 + pow(expected - hashes[k],2)/expected;
+      // cout << k << endl;
+    }
+  cout << "C2 is: " << c2 << endl;
+  boost::math::chi_squared c2d(65535.0);
+  float p = boost::math::cdf(c2d,c2);
+  //  p = ( 1 - p) * 100;
+  cout << "this is the P ->" << p << endl;
+
+}
+void reset(vector<int> &hashes)
+{
+  hashes.clear();
+  hashes.resize(65536);
+    cout << "----------- finished reset-----------" << endl;
+}
+
+
+
